@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Streamlit
+*.streamlit/
+
+# Virtual Environment
+venv/
+.env
+
+# Dotenv
+.env.*
+
+# Common
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+*.tmp
+
+# Docker
+Dockerfile
+docker-compose.yml
+.docker/
+docker-compose.override.yml

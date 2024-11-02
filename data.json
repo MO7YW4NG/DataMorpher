@@ -1,0 +1,167 @@
+{
+    "customers": [
+      {
+        "id": 1,
+        "name": "Alice Johnson",
+        "email": "alice@example.com",
+        "address": {
+          "street": "123 Maple St",
+          "city": "Springfield",
+          "state": "IL",
+          "zip": "62701"
+        },
+        "orders": [
+          {
+            "order_id": 101,
+            "date": "2023-07-21",
+            "status": "Shipped",
+            "items": [
+              {
+                "product_id": 1001,
+                "name": "Laptop",
+                "category": "Electronics",
+                "price": 1200,
+                "quantity": 1
+              },
+              {
+                "product_id": 1002,
+                "name": "Mouse",
+                "category": "Accessories",
+                "price": 25,
+                "quantity": 1
+              }
+            ],
+            "shipping": {
+              "method": "UPS",
+              "cost": 20,
+              "tracking_number": "1Z9999"
+            },
+            "review": {
+              "rating": 4.5,
+              "comments": "Great service and fast shipping!"
+            }
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "name": "Bob Smith",
+        "email": "bob@example.com",
+        "address": {
+          "street": "456 Oak St",
+          "city": "Lincoln",
+          "state": "NE",
+          "zip": "68508"
+        },
+        "orders": [
+          {
+            "order_id": 102,
+            "date": "2023-08-05",
+            "status": "Delivered",
+            "items": [
+              {
+                "product_id": 1003,
+                "name": "Tablet",
+                "category": "Electronics",
+                "price": 300,
+                "quantity": 2
+              }
+            ],
+            "shipping": {
+              "method": "FedEx",
+              "cost": 15,
+              "tracking_number": "2Y8888"
+            },
+            "review": {
+              "rating": 5.0,
+              "comments": "Excellent quality and well-packaged."
+            }
+          },
+          {
+            "order_id": 103,
+            "date": "2023-08-10",
+            "status": "Pending",
+            "items": [
+              {
+                "product_id": 1004,
+                "name": "Smartphone",
+                "category": "Electronics",
+                "price": 800,
+                "quantity": 1
+              },
+              {
+                "product_id": 1005,
+                "name": "Headphones",
+                "category": "Accessories",
+                "price": 50,
+                "quantity": 1
+              }
+            ],
+            "shipping": {
+              "method": "DHL",
+              "cost": 25,
+              "tracking_number": "3Z7777"
+            },
+            "review": null
+          }
+        ]
+      }
+    ],
+    "products": [
+      {
+        "product_id": 1001,
+        "name": "Laptop",
+        "category": "Electronics",
+        "price": 1200,
+        "stock": 10,
+        "supplier": {
+          "name": "TechSupplier Inc.",
+          "contact": "support@techsupplier.com"
+        }
+      },
+      {
+        "product_id": 1002,
+        "name": "Mouse",
+        "category": "Accessories",
+        "price": 25,
+        "stock": 100,
+        "supplier": {
+          "name": "GadgetsPro",
+          "contact": "info@gadgetspro.com"
+        }
+      },
+      {
+        "product_id": 1003,
+        "name": "Tablet",
+        "category": "Electronics",
+        "price": 300,
+        "stock": 50,
+        "supplier": {
+          "name": "TechSupplier Inc.",
+          "contact": "support@techsupplier.com"
+        }
+      },
+      {
+        "product_id": 1004,
+        "name": "Smartphone",
+        "category": "Electronics",
+        "price": 800,
+        "stock": 25,
+        "supplier": {
+          "name": "MobileMasters",
+          "contact": "service@mobilemasters.com"
+        }
+      },
+      {
+        "product_id": 1005,
+        "name": "Headphones",
+        "category": "Accessories",
+        "price": 50,
+        "stock": 200,
+        "supplier": {
+          "name": "GadgetsPro",
+          "contact": "info@gadgetspro.com"
+        }
+      }
+    ]
+  }
