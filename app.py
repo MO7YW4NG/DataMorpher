@@ -40,14 +40,16 @@ generation_config = {
       ),
       "attributes": content.Schema(
         type=content.Type.ARRAY,
+        description="array of json object of the entity",
         items=content.Schema(
-          type=content.Type.STRING,
+            type=content.Type.STRING,
         )
       ),
       "rows": content.Schema(
         type=content.Type.ARRAY,
         items=content.Schema(
           type=content.Type.STRING,
+          description="insert query string, keep track on the entities"
         )
       ),
     },
@@ -58,7 +60,7 @@ generation_config = {
 
 model = genai.GenerativeModel(
   model_name="gemini-1.5-flash-002",
-  system_instruction="You're an expert in Database (SQL & NoSQL), Given a NoSQL JSON data, normalize it to 3NF, make sure their relations llegal, every entity is related to at least one other entity, and every entity has at least one attribute.",
+  system_instruction="You're an expert in Database (SQL & NoSQL), Given a NoSQL JSON data, normalize it to 3NF, make sure their relations llegal, every entity is related to at least one foreign key, and every entity has at least one attribute.",
   generation_config=generation_config,
 )
 
@@ -66,7 +68,8 @@ chat_session = model.start_chat(
   history=[
   ]
 )
-os.remove("knowledge_graph.db")
+if os.path.exists("knowledge_graph.db"):
+    os.remove("knowledge_graph.db")
 # 範例 NoSQL JSON 資料
 with open("data.json") as file:
     nosql_data = json.load(file)
@@ -198,7 +201,177 @@ def display_results(graph, tables_info):
     edge_labels = nx.get_edge_attributes(graph, 'relationship')
     nx.draw_networkx_edge_labels(graph, pos, edge_labels=edge_labels)
     plt.show()
-
+def show():
+    conn = sqlite3.connect('knowledge_graph.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+                   WITH fk_info AS (
+  SELECT
+      json_group_array(
+          json_object(
+              'schema', '',  -- SQLite does not have schemas
+              'table', m.name,
+              'column', fk."from",
+              'foreign_key_name',
+                  'fk_' || m.name || '_' || fk."from" || '_' || fk."table" || '_' || fk."to",  -- Generated foreign key name
+              'reference_schema', '', -- SQLite does not have schemas
+              'reference_table', fk."table",
+              'reference_column', fk."to",
+              'fk_def',
+                  'FOREIGN KEY (' || fk."from" || ') REFERENCES ' || fk."table" || '(' || fk."to" || ')' ||
+                  ' ON UPDATE ' || fk.on_update || ' ON DELETE ' || fk.on_delete
+          )
+      ) AS fk_metadata
+  FROM
+      sqlite_master m
+  JOIN
+      pragma_foreign_key_list(m.name) fk
+  ON
+      m.type = 'table'
+), pk_info AS (
+  SELECT
+      json_group_array(
+          json_object(
+              'schema', '',  -- SQLite does not have schemas
+              'table', pk.table_name,
+              'field_count', pk.field_count,
+              'column', pk.pk_column,
+              'pk_def', 'PRIMARY KEY (' || pk.pk_column || ')'
+          )
+      ) AS pk_metadata
+  FROM
+  (
+      SELECT
+          m.name AS table_name,
+          COUNT(p.name) AS field_count,  -- Count of primary key columns
+          GROUP_CONCAT(p.name) AS pk_column  -- Concatenated list of primary key columns
+      FROM
+          sqlite_master m
+      JOIN
+          pragma_table_info(m.name) p
+      ON
+          m.type = 'table' AND p.pk > 0
+      GROUP BY
+          m.name
+  ) pk
+), indexes_metadata AS (
+  SELECT
+      json_group_array(
+          json_object(
+              'schema', '',  -- SQLite does not have schemas
+              'table', m.name,
+              'name', idx.name,
+              'column', ic.name,
+              'index_type', 'B-TREE',  -- SQLite uses B-Trees for indexing
+              'cardinality', '',  -- SQLite does not provide cardinality
+              'size', '',  -- SQLite does not provide index size
+              'unique', (CASE WHEN idx."unique" = 1 THEN 'true' ELSE 'false' END),
+              'direction', '',  -- SQLite does not provide direction info
+              'column_position', ic.seqno + 1  -- Adding 1 to convert from zero-based to one-based index
+          )
+      ) AS indexes_metadata
+  FROM
+      sqlite_master m
+  JOIN
+      pragma_index_list(m.name) idx
+  ON
+      m.type = 'table'
+  JOIN
+      pragma_index_info(idx.name) ic
+), cols AS (
+  SELECT
+      json_group_array(
+          json_object(
+              'schema', '',  -- SQLite does not have schemas
+              'table', m.name,
+              'name', p.name,
+              'type',
+                  CASE
+                      WHEN INSTR(LOWER(p.type), '(') > 0 THEN
+                          SUBSTR(LOWER(p.type), 1, INSTR(LOWER(p.type), '(') - 1)
+                      ELSE LOWER(p.type)
+                  END,
+              'ordinal_position', p.cid,
+              'nullable', (CASE WHEN p."notnull" = 0 THEN 'true' ELSE 'false' END),
+              'collation', '',
+              'character_maximum_length',
+                  CASE
+                      WHEN LOWER(p.type) LIKE 'char%' OR LOWER(p.type) LIKE 'varchar%' THEN
+                          CASE
+                              WHEN INSTR(p.type, '(') > 0 THEN
+                                  REPLACE(SUBSTR(p.type, INSTR(p.type, '(') + 1, LENGTH(p.type) - INSTR(p.type, '(') - 1), ')', '')
+                              ELSE 'null'
+                          END
+                      ELSE 'null'
+                  END,
+              'precision',
+              CASE
+                  WHEN LOWER(p.type) LIKE 'decimal%' OR LOWER(p.type) LIKE 'numeric%' THEN
+                      CASE
+                          WHEN instr(p.type, '(') > 0 THEN
+                              json_object(
+                                  'precision', substr(p.type, instr(p.type, '(') + 1, instr(p.type, ',') - instr(p.type, '(') - 1),
+                                  'scale', substr(p.type, instr(p.type, ',') + 1, instr(p.type, ')') - instr(p.type, ',') - 1)
+                              )
+                          ELSE 'null'
+                      END
+                  ELSE 'null'
+              END,
+              'default', COALESCE(REPLACE(p.dflt_value, '"', '\"'), '')
+          )
+      ) AS cols_metadata
+  FROM
+      sqlite_master m
+  JOIN
+      pragma_table_info(m.name) p
+  ON
+      m.type in ('table', 'view')
+), tbls AS (
+  SELECT
+      json_group_array(
+          json_object(
+              'schema', '',  -- SQLite does not have schemas
+              'table', m.name,
+              'rows', -1,
+              'type', 'table',
+              'engine', '',  -- SQLite does not use storage engines
+              'collation', ''  -- Collation information is not available
+          )
+      ) AS tbls_metadata
+  FROM
+      sqlite_master m
+  WHERE
+      m.type in ('table', 'view')
+), views AS (
+  SELECT
+      json_group_array(
+          json_object(
+              'schema', '',
+              'view_name', m.name
+          )
+      ) AS views_metadata
+  FROM
+      sqlite_master m
+  WHERE
+      m.type = 'view'
+)
+SELECT
+replace(replace(replace(
+      json_object(
+          'fk_info', (SELECT fk_metadata FROM fk_info),
+          'pk_info', (SELECT pk_metadata FROM pk_info),
+          'columns', (SELECT cols_metadata FROM cols),
+          'indexes', (SELECT indexes_metadata FROM indexes_metadata),
+          'tables', (SELECT tbls_metadata FROM tbls),
+          'views', (SELECT views_metadata FROM views),
+          'database_name', 'sqlite',
+          'version', sqlite_version()
+      ),
+      '\"', '"'),'"[', '['), ']"', ']'
+) AS metadata_json_to_import;
+                   """)
+    a = cursor.fetchall()
+    print(str(a[0]).replace("\\",""))
 def main():
     structured_data = extract_structure_with_attributes(nosql_data)
     print("LLM生成的結構化信息和表屬性:\n", json.dumps(structured_data, indent=2))
@@ -212,7 +385,7 @@ def main():
     
     insert(structured_data['rows'])
     print("NoSQL 數據已插入 SQLite 表中。")
-    
+    show()
     tables_info = list_tables()
     display_results(graph, tables_info)
 
